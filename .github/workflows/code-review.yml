@@ -54,4 +54,4 @@ jobs:
             *.min.js
             *.lock
           max-files: "15"
-          comment-threshold: "MEDIA"
+          comment-threshold: "BAJA"

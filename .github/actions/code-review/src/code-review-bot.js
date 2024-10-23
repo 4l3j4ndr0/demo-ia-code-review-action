@@ -183,20 +183,41 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
         return [];
       }
 
-      // Extract JSON objects from the content
-      const jsonObjects = content.match(/\{[\s\S]*?\}/g);
-      if (!jsonObjects) {
-        console.warn("No JSON objects found in content");
-        return [];
-      }
-
+      // Attempt to fix and parse the JSON objects
+      const jsonObjects = content.match(/\{[\s\S]*?\}/g) || [];
       return jsonObjects
         .map((jsonString) => {
           try {
+            // Replace newlines in the "code" field with escaped newlines
+            jsonString = jsonString.replace(
+              /("code":\s*")([^"]*)(")/,
+              (match, p1, p2, p3) => {
+                return p1 + p2.replace(/\n/g, "\\n") + p3;
+              }
+            );
+            // Ensure the JSON object is properly closed
+            if (!jsonString.endsWith("}")) {
+              jsonString += "}";
+            }
             return JSON.parse(jsonString);
           } catch (e) {
             console.warn("Couldn't parse item as JSON:", jsonString);
-            return null;
+            // Attempt to extract useful information even if JSON parsing fails
+            const extractField = (field) => {
+              const match = jsonString.match(
+                new RegExp(`"${field}":\\s*"([^"]*)"`)
+              );
+              return match ? match[1] : null;
+            };
+            return {
+              line: parseInt(extractField("line")) || null,
+              severity: extractField("severity"),
+              issue: extractField("issue"),
+              suggestion: extractField("suggestion"),
+              code: extractField("code"),
+              refs: [],
+              canAutoFix: false,
+            };
           }
         })
         .filter((item) => item !== null);

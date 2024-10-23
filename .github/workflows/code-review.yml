@@ -43,6 +43,7 @@ jobs:
           aws-region: us-east-1
           exclude-patterns: |
             node_modules/**
+            .github/**
             dist/**
             build/**
             *.min.js

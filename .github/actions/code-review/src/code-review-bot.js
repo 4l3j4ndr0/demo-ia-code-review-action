@@ -160,7 +160,82 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
     `;
   }
 
-  // ... (resto del código de la implementación anterior, incluyendo applyChanges y métodos relacionados)
-}
+  async getFileContent(path) {
+    const { data } = await this.octokit.rest.repos.getContent({
+      ...this.context.repo,
+      path,
+      ref: this.context.payload.pull_request.head.sha,
+    });
+    return Buffer.from(data.content, "base64").toString("utf-8");
+  }
 
+  parseAnalysis(response) {
+    try {
+      const content = response.messages[0].content[0].text;
+      return JSON.parse(content);
+    } catch (error) {
+      console.error("Error parsing analysis:", error);
+      return [];
+    }
+  }
+
+  async createComment(path, body, line) {
+    await this.octokit.rest.pulls.createReviewComment({
+      ...this.context.repo,
+      pull_number: this.context.payload.pull_request.number,
+      body,
+      path,
+      line,
+      commit_id: this.context.payload.pull_request.head.sha,
+    });
+  }
+
+  async handleApplyFix(comment) {
+    const pullRequestNumber = this.context.payload.issue.number;
+    const reviewComments = await this.getReviewComments(pullRequestNumber);
+    const fixComment = reviewComments.find(
+      (rc) => rc.id === comment.in_reply_to_id
+    );
+
+    if (fixComment) {
+      const { path, line, body } = fixComment;
+      const fixCode = this.extractFixCode(body);
+      if (fixCode) {
+        await this.applyChanges(path, line, fixCode);
+      }
+    }
+  }
+
+  async getReviewComments(pullRequestNumber) {
+    const { data: comments } = await this.octokit.rest.pulls.listReviewComments(
+      {
+        ...this.context.repo,
+        pull_number: pullRequestNumber,
+      }
+    );
+    return comments;
+  }
+
+  extractFixCode(commentBody) {
+    const codeBlockRegex = /```diff\n([\s\S]*?)\n```/;
+    const match = commentBody.match(codeBlockRegex);
+    return match ? match[1] : null;
+  }
+
+  async applyChanges(path, line, fixCode) {
+    const content = await this.getFileContent(path);
+    const lines = content.split("\n");
+    lines[line - 1] = fixCode.replace(/^[+-]\s/, "");
+    const updatedContent = lines.join("\n");
+
+    await this.octokit.rest.repos.createOrUpdateFileContents({
+      ...this.context.repo,
+      path,
+      message: `Apply fix suggested by CodeReviewBot`,
+      content: Buffer.from(updatedContent).toString("base64"),
+      sha: this.context.payload.pull_request.head.sha,
+      branch: this.context.payload.pull_request.head.ref,
+    });
+  }
+}
 module.exports = { CodeReviewBot };

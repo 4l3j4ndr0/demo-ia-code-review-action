@@ -72,37 +72,34 @@ class CodeReviewBot {
         {
           type: "text",
           text: `Analiza el siguiente código y proporciona un análisis detallado. 
-                Enfócate en:
-                1. Bugs potenciales o actuales
-                2. Vulnerabilidades de seguridad
-                3. Problemas de rendimiento
-                4. Mejores prácticas específicas para ${filename
-                  .split(".")
-                  .pop()}
-                5. Sugerencias de refactorización
+              Enfócate en:
+              1. Bugs potenciales o actuales
+              2. Vulnerabilidades de seguridad
+              3. Problemas de rendimiento
+              4. Mejores prácticas específicas para ${filename.split(".").pop()}
+              5. Sugerencias de refactorización
 
-                Para cada problema identificado:
-                - Indica la línea específica del código
-                - Explica el problema
-                - Proporciona una solución concreta con el código corregido
-                - Clasifica la severidad (CRÍTICA, ALTA, MEDIA, BAJA)
-                - Si es posible, incluye referencias a documentación relevante
+              Para cada problema identificado, proporciona la información en el siguiente formato JSON exacto:
 
-                Archivo: ${filename}
-                Contenido:
-                ${content}
+              {
+                "line": <número_de_línea>,
+                "severity": "<CRÍTICA|ALTA|MEDIA|BAJA>",
+                "issue": "<descripción breve del problema>",
+                "suggestion": "<sugerencia de solución>",
+                "code": "<código corregido>",
+                "refs": ["<enlace1>", "<enlace2>", ...],
+                "canAutoFix": <true|false>
+              }
 
-                Formato de respuesta:
-                Para cada problema, usa el siguiente formato JSON:
-                {
-                  "line": número_de_línea,
-                  "severity": "CRÍTICA|ALTA|MEDIA|BAJA",
-                  "issue": "descripción del problema",
-                  "suggestion": "sugerencia de solución",
-                  "code": "código corregido",
-                  "refs": ["enlaces a documentación"],
-                  "canAutoFix": true|false
-                }`,
+              Instrucciones importantes:
+              1. Responde SOLO con objetos JSON, uno por cada problema encontrado.
+              2. No incluyas texto adicional fuera de los objetos JSON.
+              3. Asegúrate de que cada objeto JSON esté en una línea separada.
+              4. Si no encuentras problemas, responde con un array vacío: []
+
+              Archivo: ${filename}
+              Contenido:
+              ${content}`,
         },
       ],
     };

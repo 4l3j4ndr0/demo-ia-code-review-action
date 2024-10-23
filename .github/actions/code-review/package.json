@@ -10,7 +10,8 @@
   "dependencies": {
     "@actions/core": "^1.10.0",
     "@actions/github": "^5.1.1",
-    "@aws-sdk/client-bedrock-runtime": "^3.0.0"
+    "@aws-sdk/client-bedrock-runtime": "^3.0.0",
+    "minimatch": "^10.0.1"
   },
   "devDependencies": {
     "eslint": "^8.40.0",

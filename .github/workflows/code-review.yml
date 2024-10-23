@@ -25,6 +25,11 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      - name: Install dependencies
+        run: |
+          cd .github/actions/code-review
+          npm install
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:

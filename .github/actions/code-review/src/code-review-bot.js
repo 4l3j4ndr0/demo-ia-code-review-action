@@ -172,8 +172,6 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
 
   parseAnalysis(response) {
     try {
-      console.log("Raw response:", JSON.stringify(response, null, 2));
-
       let content = "";
       if (response.content && Array.isArray(response.content)) {
         content = response.content[0].text;
@@ -213,12 +211,38 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
   }
 
   async createComment(path, body, line) {
+    const { data: diff } = await this.octokit.rest.pulls.get({
+      ...this.context.repo,
+      pull_number: this.context.payload.pull_request.number,
+      mediaType: {
+        format: "diff",
+      },
+    });
+
+    const parsedDiff = this.diffParser.parse(diff);
+    const fileDiff = parsedDiff.find((file) => file.to === path);
+
+    if (!fileDiff) {
+      console.warn(`No diff found for file: ${path}`);
+      return;
+    }
+
+    const diffLine = fileDiff.chunks
+      .flatMap((chunk) => chunk.changes)
+      .find((change) => change.lineNumber === line);
+
+    if (!diffLine) {
+      console.warn(`Line ${line} not found in diff for file: ${path}`);
+      return;
+    }
+
     await this.octokit.rest.pulls.createReviewComment({
       ...this.context.repo,
       pull_number: this.context.payload.pull_request.number,
       body,
       path,
-      line,
+      line: diffLine.lineNumber,
+      side: "RIGHT",
       commit_id: this.context.payload.pull_request.head.sha,
     });
   }

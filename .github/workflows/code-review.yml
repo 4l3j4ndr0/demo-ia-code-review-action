@@ -45,6 +45,7 @@ jobs:
             node_modules/**
             .github/**
             .gitignore
+            .github/actions/code-review/**
             package.json
             package-lock.json
             README.md

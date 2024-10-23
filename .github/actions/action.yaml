@@ -1,0 +1,27 @@
+name: "Code Review with Claude on AWS Bedrock"
+description: "Analiza código usando Claude de Anthropic via AWS Bedrock y proporciona recomendaciones en PRs"
+inputs:
+  github-token:
+    description: "Token de GitHub para acceder al repositorio"
+    required: true
+  aws-region:
+    description: "Region de AWS"
+    required: true
+  exclude-patterns:
+    description: "Patrones glob para excluir archivos del análisis"
+    required: false
+    default: "node_modules/**,dist/**,build/**"
+  max-files:
+    description: "Número máximo de archivos a analizar por PR"
+    required: false
+    default: "10"
+  comment-threshold:
+    description: "Severidad mínima para comentar (CRÍTICA, ALTA, MEDIA, BAJA)"
+    required: false
+    default: "MEDIA"
+runs:
+  using: "node20"
+  main: "index.js"
+branding:
+  icon: "eye"
+  color: "blue"

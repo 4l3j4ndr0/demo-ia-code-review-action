@@ -1,0 +1,17 @@
+<h1>Cloudcamp ToDo App</h1>
+
+<ul>
+    {{#each todos}}
+    <li>
+        <form action="/toggle/{{this.id}}" method="POST" style="display: inline;">
+            <input type="checkbox" onChange="this.form.submit()" {{#if this.completed}}checked{{/if}}>
+        </form>
+        <span style="{{#if this.completed}}text-decoration: line-through;{{/if}}">{{this.text}}</span>
+    </li>
+    {{/each}}
+</ul>
+
+<form action="/add" method="POST">
+    <input type="text" name="todo" placeholder="Add a new todo" required>
+    <input type="submit" value="Add">
+</form>

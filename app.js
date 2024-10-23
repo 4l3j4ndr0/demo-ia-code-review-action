@@ -42,6 +42,6 @@ app.post("/toggle/:id", (req, res) => {
   res.redirect("/");
 });
 
-app.listen(port, () => {
+app.listen(ports, () => {
   console.log(`Server running on http://localhost:${port}`);
 });

@@ -1,4 +1,4 @@
-const minimatch = require("minimatch");
+const { minimatch } = require("minimatch");
 
 function parseExcludePatterns(input) {
   if (!input) return [];

@@ -229,40 +229,61 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
   }
 
   async createComment(path, body, line) {
-    const { data: diff } = await this.octokit.rest.pulls.get({
-      ...this.context.repo,
-      pull_number: this.context.payload.pull_request.number,
-      mediaType: {
-        format: "diff",
-      },
-    });
+    try {
+      const { data: diff } = await this.octokit.rest.pulls.get({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+        mediaType: {
+          format: "diff",
+        },
+      });
 
-    // const parsedDiff = this.diffParser.parse(diff);
-    // const fileDiff = parsedDiff.find((file) => file.to === path);
+      const parsedDiff = this.diffParser.parse(diff);
+      const fileDiff = parsedDiff.find((file) => file.to === path);
 
-    // if (!fileDiff) {
-    //   console.warn(`No diff found for file: ${path}`);
-    //   return;
-    // }
+      if (!fileDiff) {
+        console.warn(`No diff found for file: ${path}`);
+        // Instead of returning, let's try to create a comment without a specific line
+        return this.createCommentWithoutLine(path, body);
+      }
 
-    // const diffLine = fileDiff.chunks
-    //   .flatMap((chunk) => chunk.changes)
-    //   .find((change) => change.lineNumber === line);
+      const diffLine = fileDiff.chunks
+        .flatMap((chunk) => chunk.changes)
+        .find((change) => change.lineNumber === line);
 
-    // if (!diffLine) {
-    //   console.warn(`Line ${line} not found in diff for file: ${path}`);
-    //   return;
-    // }
+      if (!diffLine) {
+        console.warn(`Line ${line} not found in diff for file: ${path}`);
+        // Again, let's try to create a comment without a specific line
+        return this.createCommentWithoutLine(path, body);
+      }
 
-    await this.octokit.rest.pulls.createReviewComment({
-      ...this.context.repo,
-      pull_number: this.context.payload.pull_request.number,
-      body,
-      path,
-      line: diffLine.lineNumber,
-      side: "RIGHT",
-      commit_id: this.context.payload.pull_request.head.sha,
-    });
+      await this.octokit.rest.pulls.createReviewComment({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+        body,
+        path,
+        line: diffLine.lineNumber,
+        side: "RIGHT",
+        commit_id: this.context.payload.pull_request.head.sha,
+      });
+    } catch (error) {
+      console.error(`Error creating comment for ${path}:`, error);
+    }
+  }
+
+  async createCommentWithoutLine(path, body) {
+    try {
+      await this.octokit.rest.pulls.createReviewComment({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+        body,
+        path,
+        side: "RIGHT",
+        commit_id: this.context.payload.pull_request.head.sha,
+      });
+    } catch (error) {
+      console.error(`Error creating comment without line for ${path}:`, error);
+    }
   }
 
   async handleApplyFix(comment) {

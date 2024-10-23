@@ -25,6 +25,11 @@ jobs:
           node-version: "20"
           cache: "npm"
 
+      - name: Install dependencies
+        run: |
+          cd .github/actions/code-review
+          npm install
+
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -38,9 +43,15 @@ jobs:
           aws-region: us-east-1
           exclude-patterns: |
             node_modules/**
+            .github/**
+            .gitignore
+            .github/actions/code-review/**
+            package.json
+            package-lock.json
+            README.md
             dist/**
             build/**
             *.min.js
             *.lock
           max-files: "15"
-          comment-threshold: "MEDIA"
+          comment-threshold: "BAJA"

@@ -44,6 +44,10 @@ jobs:
           exclude-patterns: |
             node_modules/**
             .github/**
+            .gitignore
+            package.json
+            package-lock.json
+            README.md
             dist/**
             build/**
             *.min.js

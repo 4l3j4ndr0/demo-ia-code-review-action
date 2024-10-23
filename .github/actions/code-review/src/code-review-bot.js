@@ -46,6 +46,7 @@ class CodeReviewBot {
 
       const content = await this.getFileContent(file.filename);
       const analysis = await this.analyzeCode(content, file.filename);
+      console.log("Analysis:", analysis);
       await this.createReviewComments(file.filename, analysis);
       analyzedFiles++;
     }
@@ -171,8 +172,6 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
 
   parseAnalysis(response) {
     try {
-      console.log("Raw response:", JSON.stringify(response, null, 2));
-
       if (response.content && Array.isArray(response.content)) {
         // If content is directly an array
         return response.content.flatMap((item) => {

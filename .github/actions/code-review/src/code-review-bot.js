@@ -23,6 +23,14 @@ class CodeReviewBot {
     }
   }
 
+  async getPRFiles() {
+    const { data: files } = await this.octokit.rest.pulls.listFiles({
+      ...this.context.repo,
+      pull_number: this.context.payload.pull_request.number,
+    });
+    return files;
+  }
+
   async handlePullRequest() {
     const files = await this.getPRFiles();
     let analyzedFiles = 0;

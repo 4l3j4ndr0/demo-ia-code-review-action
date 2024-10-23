@@ -237,22 +237,22 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
       },
     });
 
-    const parsedDiff = this.diffParser.parse(diff);
-    const fileDiff = parsedDiff.find((file) => file.to === path);
+    // const parsedDiff = this.diffParser.parse(diff);
+    // const fileDiff = parsedDiff.find((file) => file.to === path);
 
-    if (!fileDiff) {
-      console.warn(`No diff found for file: ${path}`);
-      return;
-    }
+    // if (!fileDiff) {
+    //   console.warn(`No diff found for file: ${path}`);
+    //   return;
+    // }
 
-    const diffLine = fileDiff.chunks
-      .flatMap((chunk) => chunk.changes)
-      .find((change) => change.lineNumber === line);
+    // const diffLine = fileDiff.chunks
+    //   .flatMap((chunk) => chunk.changes)
+    //   .find((change) => change.lineNumber === line);
 
-    if (!diffLine) {
-      console.warn(`Line ${line} not found in diff for file: ${path}`);
-      return;
-    }
+    // if (!diffLine) {
+    //   console.warn(`Line ${line} not found in diff for file: ${path}`);
+    //   return;
+    // }
 
     await this.octokit.rest.pulls.createReviewComment({
       ...this.context.repo,

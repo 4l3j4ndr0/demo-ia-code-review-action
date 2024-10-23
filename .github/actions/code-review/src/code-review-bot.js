@@ -172,44 +172,39 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
 
   parseAnalysis(response) {
     try {
+      console.log("Raw response:", JSON.stringify(response, null, 2));
+
+      let content = "";
       if (response.content && Array.isArray(response.content)) {
-        // If content is directly an array
-        return response.content.flatMap((item) => {
-          if (item.text) {
-            try {
-              return JSON.parse(item.text);
-            } catch (e) {
-              console.warn("Couldn't parse item as JSON:", item.text);
-              return [];
-            }
-          }
-          return [];
-        });
+        content = response.content[0].text;
       } else if (response.messages && Array.isArray(response.messages)) {
-        // If response has a messages array
-        return response.messages.flatMap((message) => {
-          if (message.content && Array.isArray(message.content)) {
-            return message.content.flatMap((item) => {
-              if (item.text) {
-                try {
-                  return JSON.parse(item.text);
-                } catch (e) {
-                  console.warn("Couldn't parse item as JSON:", item.text);
-                  return [];
-                }
-              }
-              return [];
-            });
-          }
-          return [];
-        });
+        content = response.messages[0].content[0].text;
       } else if (typeof response === "string") {
-        // If response is a string, try to parse it directly
-        return JSON.parse(response);
-      } else {
-        console.warn("Unexpected response structure:", response);
+        content = response;
+      }
+
+      if (!content) {
+        console.warn("No content found in response");
         return [];
       }
+
+      // Extract JSON objects from the content
+      const jsonObjects = content.match(/\{[\s\S]*?\}/g);
+      if (!jsonObjects) {
+        console.warn("No JSON objects found in content");
+        return [];
+      }
+
+      return jsonObjects
+        .map((jsonString) => {
+          try {
+            return JSON.parse(jsonString);
+          } catch (e) {
+            console.warn("Couldn't parse item as JSON:", jsonString);
+            return null;
+          }
+        })
+        .filter((item) => item !== null);
     } catch (error) {
       console.error("Error parsing analysis:", error);
       console.error("Raw response:", JSON.stringify(response, null, 2));

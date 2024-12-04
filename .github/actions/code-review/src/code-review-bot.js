@@ -141,6 +141,7 @@ class CodeReviewBot {
 
     for (const issue of filteredIssues) {
       const commentBody = this.formatComment(issue);
+      console.log("Comentario:::::", commentBody);
       await this.createComment(path, commentBody, issue.line);
     }
   }
@@ -246,6 +247,8 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
         format: "diff",
       },
     });
+
+    console.log("Diff:", diff); // Agrega este log para verificar el diff
 
     const parsedDiff = this.diffParser.parse(diff);
     const fileDiff = parsedDiff.find((file) => file.to === path);

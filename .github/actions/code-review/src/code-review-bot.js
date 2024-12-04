@@ -118,7 +118,7 @@ class CodeReviewBot {
         max_tokens: 4096,
         messages: [prompt],
       });
-    } else if (this.bedrockModelId.includes("mistral")) {
+    } else if (this.bedrockModelId.includes("amazon")) {
       payload.body = JSON.stringify({
         inferenceConfig: {
           max_tokens: 1000,

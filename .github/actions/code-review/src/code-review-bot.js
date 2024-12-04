@@ -248,7 +248,7 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
       },
     });
 
-    console.log("Diff:", diff); // Agrega este log para verificar el diff
+    // console.log("Diff:", diff); // Agrega este log para verificar el diff
 
     const parsedDiff = this.diffParser.parse(diff);
     const fileDiff = parsedDiff.find((file) => file.to === path);

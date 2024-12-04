@@ -41,7 +41,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           aws-region: us-east-1
-          bedrock-model-id: amazon.nova-pro-v1:0
+          bedrock-model-id: anthropic.claude-3-5-sonnet-20240620-v1:0
           exclude-patterns: |
             node_modules/**
             .github/**

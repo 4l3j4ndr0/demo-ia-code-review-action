@@ -71,7 +71,7 @@ class CodeReviewBot {
       role: "user",
       content: [
         {
-          // type: "text",
+          type: "text",
           text: `Analiza el siguiente código y proporciona un análisis detallado. 
               Enfócate en:
               1. Bugs potenciales o actuales

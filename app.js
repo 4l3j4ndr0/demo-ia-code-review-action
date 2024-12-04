@@ -20,7 +20,7 @@ let todos = [
 ];
 
 // Routes
-app.get("//--0", (req, res) => {
+app.get("//---", (req, res) => {
   res.render("home", { todos });
   console;
 });

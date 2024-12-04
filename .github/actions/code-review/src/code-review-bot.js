@@ -141,7 +141,6 @@ class CodeReviewBot {
 
     for (const issue of filteredIssues) {
       const commentBody = this.formatComment(issue);
-      console.log("Comentario:::::", commentBody);
       await this.createComment(path, commentBody, issue.line);
     }
   }
@@ -240,6 +239,7 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
   }
 
   async createComment(path, body, line) {
+    console.log("Create comment path:::::", path);
     const { data: diff } = await this.octokit.rest.pulls.get({
       ...this.context.repo,
       pull_number: this.context.payload.pull_request.number,
@@ -251,6 +251,7 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
     // console.log("Diff:", diff); // Agrega este log para verificar el diff
 
     const parsedDiff = this.diffParser.parse(diff);
+    console.log("PARSE DIFFF:::::", parsedDiff);
     const fileDiff = parsedDiff.find((file) => file.to === path);
 
     if (!fileDiff) {

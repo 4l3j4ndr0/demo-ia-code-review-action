@@ -81,7 +81,8 @@ class CodeReviewBot {
               5. Sugerencias de refactorización
 
               Para cada problema identificado, proporciona la información en el siguiente formato JSON exacto:
-
+            Entrega la respuesta en el siguiente formato:
+            <output_formatting>
               {
                 "line": <número_de_línea>,
                 "severity": "<CRÍTICA|ALTA|MEDIA|BAJA>",
@@ -91,6 +92,7 @@ class CodeReviewBot {
                 "refs": ["<enlace1>", "<enlace2>", ...],
                 "canAutoFix": <true|false>
               }
+            </output_formatting>
 
               Instrucciones importantes:
               1. Responde SOLO con objetos JSON, uno por cada problema encontrado.
@@ -239,44 +241,33 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
   }
 
   async createComment(path, body, line) {
-    console.log("Create comment path:::::", path);
-    const { data: diff } = await this.octokit.rest.pulls.get({
-      ...this.context.repo,
-      pull_number: this.context.payload.pull_request.number,
-      mediaType: {
-        format: "diff",
-      },
-    });
+    try {
+      console.log("Creating comment for:", { path, line });
 
-    // console.log("Diff:", diff); // Agrega este log para verificar el diff
+      // Obtener el commit actual del PR
+      const { data: pullRequest } = await this.octokit.rest.pulls.get({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+      });
 
-    const parsedDiff = this.diffParser.parse(diff);
-    // console.log("PARSE DIFFF:::::", parsedDiff);
-    const fileDiff = parsedDiff.find((file) => file.to === path);
+      const commitId = pullRequest.head.sha;
 
-    // if (!fileDiff) {
-    //   console.warn(`No diff found for file: ${path}`);
-    //   return;
-    // }
+      // Crear el comentario directamente sin verificar el diff
+      await this.octokit.rest.pulls.createReviewComment({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+        commit_id: commitId,
+        path,
+        body,
+        line,
+        side: "RIGHT",
+      });
 
-    const diffLine = fileDiff.chunks
-      .flatMap((chunk) => chunk.changes)
-      .find((change) => change.lineNumber === line);
-
-    if (!diffLine) {
-      console.warn(`Line ${line} not found in diff for file: ${path}`);
-      return;
+      console.log("Comment created successfully");
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      throw error;
     }
-
-    await this.octokit.rest.pulls.createReviewComment({
-      ...this.context.repo,
-      pull_number: this.context.payload.pull_request.number,
-      body,
-      path,
-      line: diffLine.lineNumber,
-      side: "RIGHT",
-      commit_id: this.context.payload.pull_request.head.sha,
-    });
   }
 
   async handleApplyFix(comment) {

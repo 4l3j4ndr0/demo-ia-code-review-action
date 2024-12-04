@@ -46,7 +46,6 @@ class CodeReviewBot {
       }
 
       const content = await this.getFileContent(file.filename);
-      console.log("CONTENR:::::", content);
       const analysis = await this.analyzeCode(content, file.filename);
       // console.log("Analysis:", analysis);
       await this.createReviewComments(file.filename, analysis);
@@ -99,7 +98,10 @@ class CodeReviewBot {
               1. Responde SOLO con objetos JSON, uno por cada problema encontrado.
               2. No incluyas texto adicional fuera de los objetos JSON.
               3. Asegúrate de que cada objeto JSON esté en una línea separada.
-              4. Si no encuentras problemas, responde con un array vacío: []
+              4. Si no encuentras problemas, responde con un array vacío: [].
+              5. No agregues texto fuera de los objetos JSON.
+              6. Cada problema debe estar en un objeto JSON separado.
+
 
               Archivo: ${filename}
               Contenido:
@@ -183,6 +185,7 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
 
   parseAnalysis(response) {
     try {
+      // Extraer el contenido de la respuesta
       let content = "";
       if (response.content && Array.isArray(response.content)) {
         content = response.content[0].text;
@@ -197,73 +200,68 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
         return [];
       }
 
-      // Buscar el contenido entre las etiquetas de formato
-      const formatMatch = content.match(
-        /<output_formatting>([\s\S]*?)<\/output_formatting>/
-      );
-      if (formatMatch) {
-        content = formatMatch[1].trim();
+      // Extraer información usando regex
+      const issues = [];
+      const regex = {
+        line: /\"line\":\s*(\d+)/,
+        severity: /\"severity\":\s*\"(CRÍTICA|ALTA|MEDIA|BAJA)\"/,
+        issue: /\"issue\":\s*\"([^\"]+)\"/,
+        suggestion: /\"suggestion\":\s*\"([^\"]+)\"/,
+        code: /\"code\":\s*\"([^\"]+)\"/,
+        refs: /\"refs\":\s*\[(.*?)\]/,
+        canAutoFix: /\"canAutoFix\":\s*(true|false)/,
+      };
+
+      // Encontrar todos los bloques que parecen JSON
+      const jsonBlocks = content.match(/\{[^}]+\}/g) || [];
+
+      for (const block of jsonBlocks) {
+        try {
+          const issue = {
+            line: null,
+            severity: "BAJA",
+            issue: "",
+            suggestion: "",
+            code: "",
+            refs: [],
+            canAutoFix: false,
+          };
+
+          // Extraer cada campo usando regex
+          for (const [field, pattern] of Object.entries(regex)) {
+            const match = block.match(pattern);
+            if (match) {
+              if (field === "line") {
+                issue.line = parseInt(match[1]);
+              } else if (field === "refs") {
+                try {
+                  issue.refs = JSON.parse(`[${match[1]}]`);
+                } catch (e) {
+                  issue.refs = [];
+                }
+              } else if (field === "canAutoFix") {
+                issue.canAutoFix = match[1] === "true";
+              } else {
+                issue[field] = match[1]
+                  .replace(/\\n/g, "\n")
+                  .replace(/\\"/g, '"');
+              }
+            }
+          }
+
+          // Solo agregar el issue si tiene los campos mínimos necesarios
+          if (issue.line && issue.issue && issue.suggestion) {
+            issues.push(issue);
+          }
+        } catch (e) {
+          console.warn("Error processing JSON block:", e);
+          continue;
+        }
       }
 
-      // Encontrar todos los objetos JSON
-      const jsonObjects = content.match(/\{[\s\S]*?\}/g) || [];
-
-      return jsonObjects
-        .map((jsonString) => {
-          try {
-            // Limpiar el string JSON
-            jsonString = jsonString
-              // Eliminar comillas extras al inicio y final
-              .replace(/^"/, "")
-              .replace(/"$/, "")
-              // Eliminar escapes innecesarios
-              .replace(/\\"/g, '"')
-              // Asegurar que las comillas internas estén correctamente escapadas
-              .replace(/(?<!\\)"/g, '\\"')
-              // Arreglar el formato del JSON
-              .replace(/\\/g, "");
-
-            // Convertir el string a un objeto válido
-            const cleanJson = JSON.parse(jsonString);
-
-            return {
-              line: parseInt(cleanJson.line) || null,
-              severity: cleanJson.severity || "BAJA",
-              issue: cleanJson.issue || "",
-              suggestion: cleanJson.suggestion || "",
-              code: cleanJson.code || "",
-              refs: Array.isArray(cleanJson.refs) ? cleanJson.refs : [],
-              canAutoFix: Boolean(cleanJson.canAutoFix),
-            };
-          } catch (e) {
-            console.warn("Error parsing JSON object:", e);
-
-            // Extraer campos usando regex como fallback
-            const extractField = (field) => {
-              const regex = new RegExp(`"${field}":\\s*"([^"]*)"`, "i");
-              const match = jsonString.match(regex);
-              return match ? match[1] : null;
-            };
-
-            // Extraer número de línea
-            const lineMatch = jsonString.match(/"line":\s*(\d+)/);
-            const line = lineMatch ? parseInt(lineMatch[1]) : null;
-
-            return {
-              line,
-              severity: extractField("severity") || "BAJA",
-              issue: extractField("issue") || "",
-              suggestion: extractField("suggestion") || "",
-              code: extractField("code") || "",
-              refs: [],
-              canAutoFix: false,
-            };
-          }
-        })
-        .filter((item) => item && item.line !== null);
+      return issues;
     } catch (error) {
-      console.error("Error parsing analysis:", error);
-      console.error("Raw response:", JSON.stringify(response, null, 2));
+      console.error("Error in parseAnalysis:", error);
       return [];
     }
   }

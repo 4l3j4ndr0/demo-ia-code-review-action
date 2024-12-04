@@ -251,7 +251,7 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
     // console.log("Diff:", diff); // Agrega este log para verificar el diff
 
     const parsedDiff = this.diffParser.parse(diff);
-    // console.log("PARSE DIFFF:::::", parsedDiff);
+    console.log("PARSE DIFFF:::::", parsedDiff);
     const fileDiff = parsedDiff.find((file) => file.to === path);
 
     // if (!fileDiff) {

@@ -20,8 +20,9 @@ let todos = [
 ];
 
 // Routes
-app.get("////", (req, res) => {
+app.get("//", (req, res) => {
   res.render("home", { todos });
+  console;
 });
 
 app.post("/add", (req, res) => {

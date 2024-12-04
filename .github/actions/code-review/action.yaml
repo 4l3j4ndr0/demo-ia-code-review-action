@@ -1,5 +1,5 @@
-name: "Code Review with Claude on AWS Bedrock"
-description: "Analiza código usando Claude de Anthropic via AWS Bedrock y proporciona recomendaciones en PRs"
+name: "Code Review with AI on AWS Bedrock"
+description: "Analiza código usando LLMs via AWS Bedrock y proporciona recomendaciones en PRs"
 inputs:
   github-token:
     description: "Token de GitHub para acceder al repositorio"

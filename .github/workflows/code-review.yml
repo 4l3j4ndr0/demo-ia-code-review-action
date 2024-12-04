@@ -36,11 +36,12 @@ jobs:
           role-to-assume: arn:aws:iam::590183999298:role/github-oidc-role
           aws-region: us-east-1
 
-      - name: Code Review with Claude
+      - name: Code Review with AI
         uses: ./.github/actions/code-review
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           aws-region: us-east-1
+          bedrock-model-id: amazon.nova-pro-v1:0
           exclude-patterns: |
             node_modules/**
             .github/**

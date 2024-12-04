@@ -13,6 +13,7 @@ class CodeReviewBot {
     this.bedrock = new BedrockRuntimeClient(config.awsConfig);
     this.context = github.context;
     this.diffParser = new DiffParser();
+    this.bedrockModelId = config.bedrockModelId;
   }
 
   async run() {
@@ -61,7 +62,7 @@ class CodeReviewBot {
 
   async analyzeCode(content, filename) {
     const prompt = this.buildPrompt(content, filename);
-    const response = await this.invokeClaude(prompt);
+    const response = await this.invokeBedrock(prompt);
     return this.parseAnalysis(response);
   }
 
@@ -105,9 +106,9 @@ class CodeReviewBot {
     };
   }
 
-  async invokeClaude(prompt) {
+  async invokeBedrock(prompt) {
     const payload = {
-      modelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+      modelId: this.bedrockModelId,
       contentType: "application/json",
       accept: "application/json",
       body: JSON.stringify({
@@ -137,7 +138,7 @@ class CodeReviewBot {
 
   formatComment(issue) {
     return `
-🤖 **Análisis de Código por Claude**
+🤖 **Análisis de Código por AI**
 
 **Severidad**: ${issue.severity}
 **Problema**: ${issue.issue}

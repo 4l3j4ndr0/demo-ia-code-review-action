@@ -7,6 +7,9 @@ inputs:
   aws-region:
     description: "Region de AWS"
     required: true
+  bedrock-model-id:
+    description: "Modelo de LLM de AWS Bedrock"
+    required: true
   exclude-patterns:
     description: "Patrones glob para excluir archivos del análisis"
     required: false

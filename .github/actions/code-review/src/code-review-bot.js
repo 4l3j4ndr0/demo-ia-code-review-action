@@ -239,54 +239,33 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
   }
 
   async createComment(path, body, line) {
-    console.log("Create comment path:::::", path);
-    const { data: diff } = await this.octokit.rest.pulls.get({
-      ...this.context.repo,
-      pull_number: this.context.payload.pull_request.number,
-      mediaType: {
-        format: "diff",
-      },
-    });
+    try {
+      console.log("Creating comment for:", { path, line });
 
-    const parsedDiff = this.diffParser.parse(diff);
-    console.log("PARSE DIFFF:::::", parsedDiff);
+      // Obtener el commit actual del PR
+      const { data: pullRequest } = await this.octokit.rest.pulls.get({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+      });
 
-    // Find the file in the diff that matches the path
-    const fileDiff = parsedDiff.find((file) => {
-      return (
-        file.newLines.some((line) => line.includes(`b/${path}`)) ||
-        file.oldLines.some((line) => line.includes(`a/${path}`))
-      );
-    });
+      const commitId = pullRequest.head.sha;
 
-    if (!fileDiff) {
-      console.warn(`No diff found for file: ${path}`);
-      return;
+      // Crear el comentario directamente sin verificar el diff
+      await this.octokit.rest.pulls.createReviewComment({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+        commit_id: commitId,
+        path,
+        body,
+        line,
+        side: "RIGHT",
+      });
+
+      console.log("Comment created successfully");
+    } catch (error) {
+      console.error("Error creating comment:", error);
+      throw error;
     }
-
-    // Usar directamente las newLines para encontrar la línea
-    const lineIndex = fileDiff.newLines.findIndex((diffLine, index) => {
-      // Ignorar las líneas de metadatos del diff (las que empiezan con + o -)
-      if (diffLine.startsWith("+") || diffLine.startsWith("-")) {
-        return false;
-      }
-      return index === line - 1;
-    });
-
-    if (lineIndex === -1) {
-      console.warn(`Line ${line} not found in diff for file: ${path}`);
-      return;
-    }
-
-    await this.octokit.rest.pulls.createReviewComment({
-      ...this.context.repo,
-      pull_number: this.context.payload.pull_request.number,
-      body,
-      path,
-      line: line,
-      side: "RIGHT",
-      commit_id: this.context.payload.pull_request.head.sha,
-    });
   }
 
   async handleApplyFix(comment) {

@@ -264,9 +264,9 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
       return;
     }
 
-    const diffLine = fileDiff.chunks
-      .flatMap((chunk) => chunk.changes)
-      .find((change) => change.lineNumber === line);
+    // Flatten the changes array to find the specific line
+    const allChanges = fileDiff.chunks.flatMap((chunk) => chunk.changes);
+    const diffLine = allChanges.find((change) => change.lineNumber === line);
 
     if (!diffLine) {
       console.warn(`Line ${line} not found in diff for file: ${path}`);

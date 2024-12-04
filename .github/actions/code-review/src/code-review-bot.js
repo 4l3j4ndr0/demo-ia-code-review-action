@@ -46,8 +46,9 @@ class CodeReviewBot {
       }
 
       const content = await this.getFileContent(file.filename);
+      console.log("CONTENR:::::", content);
       const analysis = await this.analyzeCode(content, file.filename);
-      console.log("Analysis:", analysis);
+      // console.log("Analysis:", analysis);
       await this.createReviewComments(file.filename, analysis);
       analyzedFiles++;
     }
@@ -142,6 +143,7 @@ class CodeReviewBot {
     );
 
     for (const issue of filteredIssues) {
+      console.log("ISSUE:::::", issue);
       const commentBody = this.formatComment(issue);
       await this.createComment(path, commentBody, issue.line);
     }

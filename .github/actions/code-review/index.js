@@ -10,6 +10,7 @@ async function run() {
       awsConfig: {
         region: core.getInput("aws-region", { required: true }),
       },
+      bedrockModelId: core.getInput("bedrock-model-id", { required: true }),
       excludePatterns: parseExcludePatterns(core.getInput("exclude-patterns")),
       maxFiles: parseInt(core.getInput("max-files")) || 10,
       commentThreshold: core.getInput("comment-threshold") || "MEDIA",

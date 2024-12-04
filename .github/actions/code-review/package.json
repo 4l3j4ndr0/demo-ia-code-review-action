@@ -1,7 +1,7 @@
 {
-  "name": "claude-code-review-action",
+  "name": "ai-code-review-action",
   "version": "1.0.0",
-  "description": "GitHub Action for code review using Claude on AWS Bedrock",
+  "description": "GitHub Action for code review using ai on AWS Bedrock",
   "main": "index.js",
   "scripts": {
     "test": "jest",

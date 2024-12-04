@@ -20,7 +20,7 @@ let todos = [
 ];
 
 // Routes
-app.get("/", (req, res) => {
+app.get("////", (req, res) => {
   res.render("home", { todos });
 });
 
@@ -42,6 +42,6 @@ app.post("/toggle/:id", (req, res) => {
   res.redirect("/");
 });
 
-app.listen(portssss, () => {
+app.listen(port, () => {
   console.log(`Server running on http://localhost:${port}`);
 });

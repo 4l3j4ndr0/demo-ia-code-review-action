@@ -205,56 +205,55 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
         content = formatMatch[1].trim();
       }
 
-      // Attempt to fix and parse the JSON objects
+      // Encontrar todos los objetos JSON
       const jsonObjects = content.match(/\{[\s\S]*?\}/g) || [];
+
       return jsonObjects
         .map((jsonString) => {
           try {
-            // Limpiar y formatear el string JSON
+            // Limpiar el string JSON
             jsonString = jsonString
-              // Asegurar que las líneas nuevas en el código estén escapadas
-              .replace(/\n/g, "\\n")
-              // Asegurar que las comillas dentro del código estén escapadas
+              // Eliminar comillas extras al inicio y final
+              .replace(/^"/, "")
+              .replace(/"$/, "")
+              // Eliminar escapes innecesarios
+              .replace(/\\"/g, '"')
+              // Asegurar que las comillas internas estén correctamente escapadas
               .replace(/(?<!\\)"/g, '\\"')
-              // Arreglar las comillas del objeto JSON
-              .replace(/^{/, '{"')
-              .replace(/}$/, '"}')
-              .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
-              .replace(/:\s*"([^"]*)"(?=[,}])/g, ':"$1"');
+              // Arreglar el formato del JSON
+              .replace(/\\/g, "");
 
-            const parsed = JSON.parse(jsonString);
+            // Convertir el string a un objeto válido
+            const cleanJson = JSON.parse(jsonString);
 
-            // Validar y limpiar los campos
             return {
-              line:
-                typeof parsed.line === "number"
-                  ? parsed.line
-                  : parseInt(parsed.line) || null,
-              severity: parsed.severity || "BAJA",
-              issue: parsed.issue || "",
-              suggestion: parsed.suggestion || "",
-              code: parsed.code || "",
-              refs: Array.isArray(parsed.refs) ? parsed.refs : [],
-              canAutoFix: !!parsed.canAutoFix,
+              line: parseInt(cleanJson.line) || null,
+              severity: cleanJson.severity || "BAJA",
+              issue: cleanJson.issue || "",
+              suggestion: cleanJson.suggestion || "",
+              code: cleanJson.code || "",
+              refs: Array.isArray(cleanJson.refs) ? cleanJson.refs : [],
+              canAutoFix: Boolean(cleanJson.canAutoFix),
             };
           } catch (e) {
-            console.warn("Error parsing JSON:", e);
-            console.warn("Problematic JSON string:", jsonString);
+            console.warn("Error parsing JSON object:", e);
 
-            // Extraer información usando regex como fallback
+            // Extraer campos usando regex como fallback
             const extractField = (field) => {
-              const match = jsonString.match(
-                new RegExp(`"${field}":\\s*"([^"]*)"`)
-              );
+              const regex = new RegExp(`"${field}":\\s*"([^"]*)"`, "i");
+              const match = jsonString.match(regex);
               return match ? match[1] : null;
             };
 
+            // Extraer número de línea
+            const lineMatch = jsonString.match(/"line":\s*(\d+)/);
+            const line = lineMatch ? parseInt(lineMatch[1]) : null;
+
             return {
-              line: parseInt(extractField("line")) || null,
+              line,
               severity: extractField("severity") || "BAJA",
-              issue: extractField("issue") || "Problema no especificado",
-              suggestion:
-                extractField("suggestion") || "No hay sugerencia disponible",
+              issue: extractField("issue") || "",
+              suggestion: extractField("suggestion") || "",
               code: extractField("code") || "",
               refs: [],
               canAutoFix: false,

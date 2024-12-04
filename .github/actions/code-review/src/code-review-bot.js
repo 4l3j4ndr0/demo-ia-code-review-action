@@ -107,16 +107,25 @@ class CodeReviewBot {
   }
 
   async invokeBedrock(prompt) {
-    const payload = {
+    let payload = {
       modelId: this.bedrockModelId,
       contentType: "application/json",
       accept: "application/json",
-      body: JSON.stringify({
-        anthropic_version: "bedrock-2023-05-31",
-        max_tokens: 1000,
-        messages: [prompt],
-      }),
     };
+    if (this.bedrockModelId.includes("anthropic")) {
+      payload.body = JSON.stringify({
+        anthropic_version: "bedrock-2023-05-31",
+        max_tokens: 4096,
+        messages: [prompt],
+      });
+    } else if (this.bedrockModelId.includes("amazon")) {
+      payload.body = JSON.stringify({
+        inferenceConfig: {
+          max_tokens: 1000,
+        },
+        messages: [prompt],
+      });
+    }
 
     const command = new InvokeModelCommand(payload);
     const response = await this.bedrock.send(command);

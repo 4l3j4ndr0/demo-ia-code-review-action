@@ -264,11 +264,16 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
       return;
     }
 
-    // Flatten the changes array to find the specific line
-    const allChanges = fileDiff.chunks.flatMap((chunk) => chunk.changes);
-    const diffLine = allChanges.find((change) => change.lineNumber === line);
+    // Usar directamente las newLines para encontrar la línea
+    const lineIndex = fileDiff.newLines.findIndex((diffLine, index) => {
+      // Ignorar las líneas de metadatos del diff (las que empiezan con + o -)
+      if (diffLine.startsWith("+") || diffLine.startsWith("-")) {
+        return false;
+      }
+      return index === line - 1;
+    });
 
-    if (!diffLine) {
+    if (lineIndex === -1) {
       console.warn(`Line ${line} not found in diff for file: ${path}`);
       return;
     }
@@ -278,7 +283,7 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
       pull_number: this.context.payload.pull_request.number,
       body,
       path,
-      line: diffLine.lineNumber,
+      line: line,
       side: "RIGHT",
       commit_id: this.context.payload.pull_request.head.sha,
     });

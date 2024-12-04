@@ -197,44 +197,71 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
         return [];
       }
 
+      // Buscar el contenido entre las etiquetas de formato
+      const formatMatch = content.match(
+        /<output_formatting>([\s\S]*?)<\/output_formatting>/
+      );
+      if (formatMatch) {
+        content = formatMatch[1].trim();
+      }
+
       // Attempt to fix and parse the JSON objects
       const jsonObjects = content.match(/\{[\s\S]*?\}/g) || [];
       return jsonObjects
         .map((jsonString) => {
           try {
-            // Replace newlines in the "code" field with escaped newlines
-            jsonString = jsonString.replace(
-              /("code":\s*")([^"]*)(")/,
-              (match, p1, p2, p3) => {
-                return p1 + p2.replace(/\n/g, "\\n") + p3;
-              }
-            );
-            // Ensure the JSON object is properly closed
-            if (!jsonString.endsWith("}")) {
-              jsonString += "}";
-            }
-            return JSON.parse(jsonString);
+            // Limpiar y formatear el string JSON
+            jsonString = jsonString
+              // Asegurar que las líneas nuevas en el código estén escapadas
+              .replace(/\n/g, "\\n")
+              // Asegurar que las comillas dentro del código estén escapadas
+              .replace(/(?<!\\)"/g, '\\"')
+              // Arreglar las comillas del objeto JSON
+              .replace(/^{/, '{"')
+              .replace(/}$/, '"}')
+              .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":')
+              .replace(/:\s*"([^"]*)"(?=[,}])/g, ':"$1"');
+
+            const parsed = JSON.parse(jsonString);
+
+            // Validar y limpiar los campos
+            return {
+              line:
+                typeof parsed.line === "number"
+                  ? parsed.line
+                  : parseInt(parsed.line) || null,
+              severity: parsed.severity || "BAJA",
+              issue: parsed.issue || "",
+              suggestion: parsed.suggestion || "",
+              code: parsed.code || "",
+              refs: Array.isArray(parsed.refs) ? parsed.refs : [],
+              canAutoFix: !!parsed.canAutoFix,
+            };
           } catch (e) {
-            console.warn("Couldn't parse item as JSON:", jsonString);
-            // Attempt to extract useful information even if JSON parsing fails
+            console.warn("Error parsing JSON:", e);
+            console.warn("Problematic JSON string:", jsonString);
+
+            // Extraer información usando regex como fallback
             const extractField = (field) => {
               const match = jsonString.match(
                 new RegExp(`"${field}":\\s*"([^"]*)"`)
               );
               return match ? match[1] : null;
             };
+
             return {
               line: parseInt(extractField("line")) || null,
-              severity: extractField("severity"),
-              issue: extractField("issue"),
-              suggestion: extractField("suggestion"),
-              code: extractField("code"),
+              severity: extractField("severity") || "BAJA",
+              issue: extractField("issue") || "Problema no especificado",
+              suggestion:
+                extractField("suggestion") || "No hay sugerencia disponible",
+              code: extractField("code") || "",
               refs: [],
               canAutoFix: false,
             };
           }
         })
-        .filter((item) => item !== null);
+        .filter((item) => item && item.line !== null);
     } catch (error) {
       console.error("Error parsing analysis:", error);
       console.error("Raw response:", JSON.stringify(response, null, 2));

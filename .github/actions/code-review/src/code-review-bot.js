@@ -355,7 +355,98 @@ ${
 
       const commitId = pullRequest.head.sha;
 
-      // Crear el comentario directamente sin verificar el diff
+      // Obtener el diff para este archivo
+      const { data: diff } = await this.octokit.rest.pulls.get({
+        ...this.context.repo,
+        pull_number: this.context.payload.pull_request.number,
+        mediaType: {
+          format: "diff",
+        },
+      });
+
+      // Verificar si el archivo está en el diff
+      const pullFiles = await this.getPRFiles();
+      const fileInfo = pullFiles.find((f) => f.filename === path);
+
+      if (!fileInfo) {
+        console.log(`File ${path} not found in PR diff. Skipping comment.`);
+        return;
+      }
+
+      // Obtener la información específica del diff para este archivo
+      const { data: fileDiff } = await this.octokit.request(
+        "GET /repos/{owner}/{repo}/pulls/{pull_number}/files",
+        {
+          ...this.context.repo,
+          pull_number: this.context.payload.pull_request.number,
+          mediaType: { format: "json" },
+        }
+      );
+
+      const thisFile = fileDiff.find((f) => f.filename === path);
+
+      if (!thisFile || thisFile.status === "removed") {
+        console.log(`File ${path} removed or not found. Skipping comment.`);
+        return;
+      }
+
+      // Extraer diff hunks
+      const hunks = [];
+      if (thisFile.patch) {
+        // Análisis básico del parche para identificar los hunks del diff
+        const patchLines = thisFile.patch.split("\n");
+        let currentHunk = null;
+
+        for (let i = 0; i < patchLines.length; i++) {
+          const line = patchLines[i];
+
+          // Detectar encabezado de hunk
+          if (line.startsWith("@@")) {
+            // Formato: @@ -original_start,original_count +new_start,new_count @@
+            const match = line.match(/@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+            if (match) {
+              const newStart = parseInt(match[1], 10);
+              currentHunk = {
+                start: newStart,
+                end: newStart,
+                header: line,
+                lines: [line],
+              };
+              hunks.push(currentHunk);
+            }
+          } else if (currentHunk) {
+            currentHunk.lines.push(line);
+            // Incrementar el contador de línea para líneas añadidas o de contexto
+            if (!line.startsWith("-")) {
+              currentHunk.end++;
+            }
+          }
+        }
+      }
+
+      // Encontrar el hunk adecuado para el comentario
+      let targetHunk = null;
+      for (const hunk of hunks) {
+        if (line >= hunk.start && line < hunk.end) {
+          targetHunk = hunk;
+          break;
+        }
+      }
+
+      if (!targetHunk) {
+        console.log(
+          `Line ${line} not found in diff. Creating issue comment instead.`
+        );
+        // Si no podemos comentar en la línea específica, crear un comentario general en el PR
+        await this.octokit.rest.issues.createComment({
+          ...this.context.repo,
+          issue_number: this.context.payload.pull_request.number,
+          body: `**Sobre el archivo \`${path}\` en línea ${line}:**\n\n${body}`,
+        });
+        return;
+      }
+
+      // Crear el comentario usando el diff encontrado
       await this.octokit.rest.pulls.createReviewComment({
         ...this.context.repo,
         pull_number: this.context.payload.pull_request.number,
@@ -364,12 +455,26 @@ ${
         body,
         line,
         side: "RIGHT",
+        diff_hunk: targetHunk.lines
+          .slice(0, Math.min(5, targetHunk.lines.length))
+          .join("\n"),
       });
 
       console.log("Comment created successfully");
     } catch (error) {
       console.error("Error creating comment:", error);
-      throw error;
+
+      // Si falla la creación del comentario en línea, intentar crear un comentario general
+      try {
+        await this.octokit.rest.issues.createComment({
+          ...this.context.repo,
+          issue_number: this.context.payload.pull_request.number,
+          body: `**Sobre el archivo \`${path}\` en línea ${line}:**\n\n${body}`,
+        });
+        console.log("Created issue comment as fallback");
+      } catch (fallbackError) {
+        console.error("Error creating fallback comment:", fallbackError);
+      }
     }
   }
 

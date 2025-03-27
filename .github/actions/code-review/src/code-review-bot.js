@@ -188,7 +188,7 @@ Please analyze this file and identify any issues according to the criteria in yo
       payload.body = JSON.stringify({
         messages: messages,
         max_tokens: 4096,
-        temperature: 0.1,
+        temperature: 0.2,
       });
     }
 

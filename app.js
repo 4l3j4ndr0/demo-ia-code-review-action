@@ -20,8 +20,8 @@ let todos = [
 ];
 
 // Routes
-app.get("//--", (req, res) => {
-  res.render("home", { todos });
+app.get("//-", (req, res) => {
+  res.render("home", { todossss });
   console;
 });
 

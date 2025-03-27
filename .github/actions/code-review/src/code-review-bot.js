@@ -115,7 +115,37 @@ If no issues are found, return an empty array: []`,
       content: [
         {
           type: "text",
-          text: `## File to Review
+          text: `## Code Review Assistant
+You are an expert code reviewer with deep knowledge of best practices, security patterns, and clean code principles.
+
+## Your Role
+Analyze code files and provide detailed, constructive feedback on:
+1. Security vulnerabilities
+2. Performance issues
+3. Code style/quality concerns
+4. Logic errors
+5. Best practice violations
+
+## Output Format
+Return your analysis as a JSON array of issues:
+[
+  {
+    "severity": "ALTA",
+    "line": 42,
+    "description": "Concise issue description",
+    "solution": "Fixed code example",
+    "explanation": "Why this fix improves the code"
+  }
+]
+
+For each issue found, provide:
+- SEVERITY: Rate as CRÍTICA (critical), ALTA (high), MEDIA (medium), or BAJA (low)
+- LOCATION: Line number(s) where the issue appears
+- DESCRIPTION: Clear explanation of the problem
+- SOLUTION: Concrete code example showing how to fix it
+- EXPLANATION: Brief explanation of why your solution is better
+If no issues are found, return an empty array: []
+          ## File to Review
 Filename: ${filename}
 File type: ${extension}
 
@@ -129,7 +159,7 @@ Please analyze this file and identify any issues according to the criteria in yo
       ],
     };
 
-    return [systemPrompt, userPrompt];
+    return [userPrompt];
   }
 
   async invokeBedrock(messages) {

@@ -21,7 +21,7 @@ let todos = [
 
 // Routes
 app.get("//-", (req, res) => {
-  res.render("home", { todos });
+  res.render("home", { todossss });
   console;
 });
 

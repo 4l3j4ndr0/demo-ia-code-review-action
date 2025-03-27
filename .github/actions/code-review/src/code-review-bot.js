@@ -47,7 +47,6 @@ class CodeReviewBot {
 
       const content = await this.getFileContent(file.filename);
       const analysis = await this.analyzeCode(content, file.filename);
-      // console.log("Analysis:", analysis);
       await this.createReviewComments(file.filename, analysis);
       analyzedFiles++;
     }
@@ -61,74 +60,105 @@ class CodeReviewBot {
   }
 
   async analyzeCode(content, filename) {
-    const prompt = this.buildPrompt(content, filename);
-    const response = await this.invokeBedrock(prompt);
+    const messages = this.buildPromptMessages(content, filename);
+    const response = await this.invokeBedrock(messages);
     return this.parseAnalysis(response);
   }
 
-  buildPrompt(content, filename) {
-    return {
+  buildPromptMessages(content, filename) {
+    // Determinar la extensión del archivo para usarla en el formateo de código
+    const extension = filename.split(".").pop().toLowerCase();
+
+    // System prompt ahora usa el mismo formato que el user prompt con type y text
+    const systemPrompt = {
+      role: "system",
+      content: [
+        {
+          type: "text",
+          text: `## Code Review Assistant
+You are an expert code reviewer with deep knowledge of best practices, security patterns, and clean code principles.
+
+## Your Role
+Analyze code files and provide detailed, constructive feedback on:
+1. Security vulnerabilities
+2. Performance issues
+3. Code style/quality concerns
+4. Logic errors
+5. Best practice violations
+
+## Output Format
+Return your analysis as a JSON array of issues:
+[
+  {
+    "severity": "ALTA",
+    "line": 42,
+    "description": "Concise issue description",
+    "solution": "Fixed code example",
+    "explanation": "Why this fix improves the code"
+  }
+]
+
+For each issue found, provide:
+- SEVERITY: Rate as CRÍTICA (critical), ALTA (high), MEDIA (medium), or BAJA (low)
+- LOCATION: Line number(s) where the issue appears
+- DESCRIPTION: Clear explanation of the problem
+- SOLUTION: Concrete code example showing how to fix it
+- EXPLANATION: Brief explanation of why your solution is better
+If no issues are found, return an empty array: []`,
+        },
+      ],
+    };
+
+    // User prompt ahora se enfoca en enviar los archivos y cambios
+    const userPrompt = {
       role: "user",
       content: [
         {
           type: "text",
-          text: `Analiza el siguiente código y proporciona un análisis detallado. 
-              Enfócate en:
-              1. Bugs potenciales o actuales
-              2. Vulnerabilidades de seguridad
-              3. Problemas de rendimiento
-              4. Mejores prácticas específicas para ${filename.split(".").pop()}
-              5. Sugerencias de refactorización
+          text: `## File to Review
+Filename: ${filename}
+File type: ${extension}
 
-              Para cada problema identificado, proporciona la información en el siguiente formato JSON exacto:
-            Entrega la respuesta en el siguiente formato:
-            <output_formatting>
-              {
-                "line": <número_de_línea>,
-                "severity": "<CRÍTICA|ALTA|MEDIA|BAJA>",
-                "issue": "<descripción breve del problema>",
-                "suggestion": "<sugerencia de solución>",
-                "code": "<código corregido>",
-                "refs": ["<enlace1>", "<enlace2>", ...],
-                "canAutoFix": <true|false>
-              }
-            </output_formatting>
+## Code Content
+\`\`\`${extension}
+${content}
+\`\`\`
 
-              Instrucciones importantes:
-              1. Responde SOLO con objetos JSON, uno por cada problema encontrado.
-              2. No incluyas texto adicional fuera de los objetos JSON.
-              3. Asegúrate de que cada objeto JSON esté en una línea separada.
-              4. Si no encuentras problemas, responde con un array vacío: [].
-              5. No agregues texto fuera de los objetos JSON.
-              6. Cada problema debe estar en un objeto JSON separado.
-
-
-              Archivo: ${filename}
-              Contenido:
-              ${content}`,
+Please analyze this file and identify any issues according to the criteria in your instructions.`,
         },
       ],
     };
+
+    return [systemPrompt, userPrompt];
   }
 
-  async invokeBedrock(prompt) {
+  async invokeBedrock(messages) {
     let payload = {
       modelId: this.bedrockModelId,
       contentType: "application/json",
       accept: "application/json",
     };
+
     if (this.bedrockModelId.includes("anthropic")) {
       payload.body = JSON.stringify({
         anthropic_version: "bedrock-2023-05-31",
         max_tokens: 4096,
-        messages: [prompt],
+        messages: messages,
       });
     } else if (this.bedrockModelId.includes("amazon")) {
       payload.body = JSON.stringify({
         inferenceConfig: {
           max_tokens: 1000,
+          temperature: 0.2, // Temperatura baja para respuestas más precisas
         },
-        messages: [prompt],
+        messages: messages,
+      });
+    } else {
+      // Soporte genérico para otros modelos
+      payload.body = JSON.stringify({
+        messages: messages,
+        max_tokens: 4096,
+        temperature: 0.1,
       });
     }
 
@@ -156,11 +186,11 @@ class CodeReviewBot {
 🤖 **Análisis de Código por AI**
 
 **Severidad**: ${issue.severity}
-**Problema**: ${issue.issue}
-**Sugerencia**: ${issue.suggestion}
+**Problema**: ${issue.description || issue.issue}
+**Sugerencia**: ${issue.explanation || issue.suggestion}
 
 \`\`\`diff
-${issue.code}
+${issue.solution || issue.code}
 \`\`\`
 
 ${
@@ -170,7 +200,10 @@ ${
 }
 
 Referencias:
-${issue.refs.map((ref) => `- ${ref}`).join("\n")}
+${
+  (issue.refs || []).map((ref) => `- ${ref}`).join("\n") ||
+  "- Buenas prácticas de desarrollo"
+}
     `;
   }
 
@@ -185,7 +218,7 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
 
   parseAnalysis(response) {
     try {
-      // Extraer el contenido de la respuesta
+      // Extraer el contenido de la respuesta según el formato del modelo
       let content = "";
       if (response.content && Array.isArray(response.content)) {
         content = response.content[0].text;
@@ -200,70 +233,84 @@ ${issue.refs.map((ref) => `- ${ref}`).join("\n")}
         return [];
       }
 
-      // Extraer información usando regex
-      const issues = [];
-      const regex = {
-        line: /\"line\":\s*(\d+)/,
-        severity: /\"severity\":\s*\"(CRÍTICA|ALTA|MEDIA|BAJA)\"/,
-        issue: /\"issue\":\s*\"([^\"]+)\"/,
-        suggestion: /\"suggestion\":\s*\"([^\"]+)\"/,
-        code: /\"code\":\s*\"([^\"]+)\"/,
-        refs: /\"refs\":\s*\[(.*?)\]/,
-        canAutoFix: /\"canAutoFix\":\s*(true|false)/,
-      };
-
-      // Encontrar todos los bloques que parecen JSON
-      const jsonBlocks = content.match(/\{[^}]+\}/g) || [];
-
-      for (const block of jsonBlocks) {
+      // Intentar extraer array JSON de la respuesta
+      const jsonMatch = content.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
         try {
-          const issue = {
-            line: null,
-            severity: "BAJA",
-            issue: "",
-            suggestion: "",
-            code: "",
-            refs: [],
-            canAutoFix: false,
-          };
-
-          // Extraer cada campo usando regex
-          for (const [field, pattern] of Object.entries(regex)) {
-            const match = block.match(pattern);
-            if (match) {
-              if (field === "line") {
-                issue.line = parseInt(match[1]);
-              } else if (field === "refs") {
-                try {
-                  issue.refs = JSON.parse(`[${match[1]}]`);
-                } catch (e) {
-                  issue.refs = [];
-                }
-              } else if (field === "canAutoFix") {
-                issue.canAutoFix = match[1] === "true";
-              } else {
-                issue[field] = match[1]
-                  .replace(/\\n/g, "\n")
-                  .replace(/\\"/g, '"');
-              }
-            }
-          }
-
-          // Solo agregar el issue si tiene los campos mínimos necesarios
-          if (issue.line && issue.issue && issue.suggestion) {
-            issues.push(issue);
-          }
+          const issues = JSON.parse(jsonMatch[0]);
+          // Validar que cada issue tenga los campos requeridos
+          return issues.filter(
+            (issue) =>
+              issue.severity &&
+              issue.line &&
+              (issue.description || issue.issue) &&
+              (issue.solution || issue.code)
+          );
         } catch (e) {
-          console.warn("Error processing JSON block:", e);
-          continue;
+          console.warn(
+            "Failed to parse JSON array, falling back to regex parsing"
+          );
         }
       }
 
-      return issues;
+      // Si no se pudo extraer JSON válido, usar el método de respaldo con regex
+      return this.fallbackParseWithRegex(content);
     } catch (error) {
       console.error("Error in parseAnalysis:", error);
       return [];
     }
+  }
+
+  fallbackParseWithRegex(content) {
+    // Método de respaldo usando regex
+    const issues = [];
+    const regex = {
+      line: /\"line\":\s*(\d+)/g,
+      severity: /\"severity\":\s*\"(CRÍTICA|ALTA|MEDIA|BAJA)\"/g,
+      description: /\"description\":\s*\"([^\"]+)\"/g,
+      solution: /\"solution\":\s*\"([^\"]+)\"/g,
+      explanation: /\"explanation\":\s*\"([^\"]+)\"/g,
+    };
+
+    // Encontrar todos los bloques que parecen JSON
+    const jsonBlocks = content.match(/\{[^}]+\}/g) || [];
+
+    for (const block of jsonBlocks) {
+      try {
+        const issue = {
+          line: null,
+          severity: "BAJA",
+          description: "",
+          solution: "",
+          explanation: "",
+        };
+
+        // Extraer cada campo usando regex
+        for (const [field, pattern] of Object.entries(regex)) {
+          pattern.lastIndex = 0; // Resetear el índice
+          const match = pattern.exec(block);
+          if (match) {
+            if (field === "line") {
+              issue.line = parseInt(match[1]);
+            } else {
+              issue[field] = match[1]
+                .replace(/\\n/g, "\n")
+                .replace(/\\"/g, '"');
+            }
+          }
+        }
+
+        // Solo agregar el issue si tiene los campos mínimos necesarios
+        if (issue.line && (issue.description || issue.solution)) {
+          issues.push(issue);
+        }
+      } catch (e) {
+        console.warn("Error processing JSON block:", e);
+        continue;
+      }
+    }
+
+    return issues;
   }
 
   async createComment(path, body, line) {

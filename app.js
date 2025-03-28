@@ -10,7 +10,7 @@ app.engine("handlebars", engine());
 app.set("view engine", "handlebars");
 
 // Body parser middleware
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({ extended: falssse }));
 app.use(bodyParser.json());
 
 // Sample todos

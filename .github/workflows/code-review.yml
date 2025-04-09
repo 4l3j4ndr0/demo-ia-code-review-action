@@ -9,18 +9,18 @@ jobs:
   review:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       pull-requests: write
       issues: write
       id-token: write
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
@@ -31,7 +31,7 @@ jobs:
           npm install
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::590183999298:role/github-oidc-role
           aws-region: us-east-1
@@ -41,7 +41,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           aws-region: us-east-1
-          bedrock-model-id: anthropic.claude-3-5-sonnet-20240620-v1:0
+          bedrock-model-id: anthropic.claude-3-sonnet-20240229-v1:0
           exclude-patterns: |
             node_modules/**
             .github/**
@@ -52,7 +52,15 @@ jobs:
             README.md
             dist/**
             build/**
-            *.min.js
+            *.min.jsa
             *.lock
           max-files: "15"
           comment-threshold: "BAJA"
+      - name: Debug Action Structure
+        run: |
+            ls -la .github/actions/code-review
+            echo "Main file exists: $(test -f .github/actions/code-review/dist/index.js && echo 'Yes' || echo 'No')"
+        
+      - name: Verify Node Modules
+        working-directory: .github/actions/code-review
+        run: npm list --depth=0

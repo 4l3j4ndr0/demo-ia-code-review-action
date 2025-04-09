@@ -3,7 +3,7 @@ const { engine } = require("express-handlebars");
 const bodyParser = require("body-parser");
 
 const app = express();
-const port = process.env.PORT || 80;
+const port = process.env.PORT || 3000;
 
 // Set up Handlebars
 app.engine("handlebars", engine());

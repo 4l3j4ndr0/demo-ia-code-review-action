@@ -29,6 +29,7 @@ class CodeReviewBot {
       ...this.context.repo,
       pull_number: this.context.payload.pull_request.number,
     });
+    console.log("Files to analyze:", files);
     return files;
   }
 
@@ -75,6 +76,7 @@ class CodeReviewBot {
 
   async handleComment() {
     const comment = this.context.payload.comment;
+    console.log("Comment received:", comment);
     if (comment.body.trim() === "/apply-fix") {
       await this.handleApplyFix(comment);
     }
@@ -106,6 +108,8 @@ Analyze code files and provide detailed, constructive feedback on:
 3. Code style/quality concerns
 4. Logic errors
 5. Best practice violations
+6. Code improvements and refactoring suggestions
+7. Potential bugs and edge cases
 
 ## Output Format
 Return your analysis as a JSON array of issues:
@@ -146,6 +150,8 @@ Analyze code files and provide detailed, constructive feedback on:
 3. Code style/quality concerns
 4. Logic errors
 5. Best practice violations
+6. Code improvements and refactoring suggestions
+7. Potential bugs and edge cases
 
 ## Output Format
 Return your analysis as a JSON array of issues:
